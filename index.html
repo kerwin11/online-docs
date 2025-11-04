@@ -25,19 +25,43 @@
         const TOKEN = "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"; // 例如：ghp_abc123...
 
         // 加载当前main.md内容
-        window.onload = async () => {
-            try {
-                const response = await fetch(
-                    `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/${FILE_PATH}?ref=${BRANCH}`,
-                    { headers: { Authorization: `token ${TOKEN}` } }
-                );
-                const data = await response.json();
-                const content = atob(data.content); // 解码Base64内容
-                document.getElementById("content").value = content;
-            } catch (err) {
-                document.getElementById("status").textContent = "加载失败：" + err.message;
-            }
-        };
+       window.onload = async () => {
+  const status = document.getElementById("status");
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/${FILE_PATH}?ref=${BRANCH}`,
+      { headers: { Authorization: `token ${TOKEN}` } }
+    );
+
+    if (!response.ok) {
+      throw new Error(`GitHub API 返回错误状态: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // 判断返回结构是否合法
+    if (!data.content || data.encoding !== "base64") {
+      status.textContent = "⚠️ 文件内容为空或不是标准 Base64 编码";
+      document.getElementById("content").value = "";
+      return;
+    }
+
+    // 尝试解码 Base64
+    let content = "";
+    try {
+      content = decodeURIComponent(escape(atob(data.content)));
+    } catch (decodeErr) {
+      throw new Error("Base64 解码失败，可能文件不是 UTF-8 编码或被损坏。");
+    }
+
+    document.getElementById("content").value = content;
+    status.textContent = "✅ 文件加载成功";
+  } catch (err) {
+    status.textContent = "加载失败：" + err.message;
+    document.getElementById("content").value = "";
+  }
+};
+
 
         // 保存修改到GitHub
         async function saveChanges() {
@@ -84,3 +108,4 @@
     </script>
 </body>
 </html>
+
