@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>编辑online-docs的main.md</title>
+    <style>
+        body { max-width: 800px; margin: 20px auto; padding: 0 20px; }
+        textarea { width: 100%; height: 300px; margin: 10px 0; padding: 10px; font-size: 16px; }
+        button { padding: 10px 20px; font-size: 16px; background: #2ea44f; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #238636; }
+        #status { margin-top: 10px; color: #d73a49; }
+    </style>
+</head>
+<body>
+    <h1>编辑main.md</h1>
+    <textarea id="content" placeholder="加载中..."></textarea>
+    <button onclick="saveChanges()">保存修改</button>
+    <div id="status"></div>
+
+    <script>
+        // 已帮你填写好用户名和仓库名，只需替换下面的TOKEN
+        const GITHUB_USERNAME = "kerwin11";
+        const REPO_NAME = "online-docs";
+        const FILE_PATH = "main.md";
+        const BRANCH = "main";
+        const TOKEN = "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"; // 例如：ghp_abc123...
+
+        // 加载当前main.md内容
+        window.onload = async () => {
+            try {
+                const response = await fetch(
+                    `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/${FILE_PATH}?ref=${BRANCH}`,
+                    { headers: { Authorization: `token ${TOKEN}` } }
+                );
+                const data = await response.json();
+                const content = atob(data.content); // 解码Base64内容
+                document.getElementById("content").value = content;
+            } catch (err) {
+                document.getElementById("status").textContent = "加载失败：" + err.message;
+            }
+        };
+
+        // 保存修改到GitHub
+        async function saveChanges() {
+            const newContent = document.getElementById("content").value;
+            const statusEl = document.getElementById("status");
+
+            try {
+                // 获取原文件SHA（用于覆盖更新）
+                const getResponse = await fetch(
+                    `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/${FILE_PATH}?ref=${BRANCH}`,
+                    { headers: { Authorization: `token ${TOKEN}` } }
+                );
+                const fileData = await getResponse.json();
+                const sha = fileData.sha;
+
+                // 提交新内容
+                const putResponse = await fetch(
+                    `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/${FILE_PATH}`,
+                    {
+                        method: "PUT",
+                        headers: {
+                            Authorization: `token ${TOKEN}`,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            message: "匿名用户修改",
+                            content: btoa(unescape(encodeURIComponent(newContent))), // 编码为Base64
+                            sha: sha,
+                            branch: BRANCH
+                        })
+                    }
+                );
+
+                if (putResponse.ok) {
+                    statusEl.textContent = "修改已保存！";
+                    statusEl.style.color = "#2ea44f";
+                } else {
+                    statusEl.textContent = "保存失败：" + await putResponse.text();
+                }
+            } catch (err) {
+                statusEl.textContent = "保存出错：" + err.message;
+            }
+        }
+    </script>
+</body>
+</html>
